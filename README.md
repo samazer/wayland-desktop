@@ -62,7 +62,7 @@ there is no support, yet, for Plasma6 activities.)
 
 <!-- do not edit: begin -->
 
-**Wayland Desktop Setup**
+**Wayland Desktop Setup**<br>
 **Plasma6 Session Restore for Wayland, including input injection.**
 
 Copyright © 2026 by Sam Azer&lt;sam dot azer at azertech dot net&gt;, All rights reserved.
