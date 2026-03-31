@@ -269,13 +269,6 @@ To add a log file to your autostart entry:
 Exec=/path/to/wayland-desktop/restore --log ~/.config/wayland-desktop/restore.log
 ```
 
-For a fully non-interactive autostart (no dialogs), invoke `restore`
-directly:
-
-```ini
-Exec=/usr/bin/python3 /path/to/wayland-desktop/wayland/restore
-```
-
 ---
 
 ### snapshot
