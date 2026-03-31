@@ -46,13 +46,13 @@ there is no support, yet, for Plasma6 activities.)
 
 0. [Copyright &amp; License](#copyright--license)
 1. [Command-line tools](#command-line-tools)
-   - [restore](#restore): Restore a Desktop Setup from a YAML file
-   - [snapshot](#snapshot): Snapshot the current Desktop Setup into a YAML file
+   - [restore](#restore): Restore a Desktop Setup from a YAML file.
+   - [snapshot](#snapshot): Snapshot the current Desktop Setup into a YAML file.
    - [realign](#realign): Move windows back to their desired locations (from the YAML file, in case they've been moved.) 
    - [mouse-clicks](#mouse-clicks): Utility that captures keystrokes and mouse-clicks to help build input injection scripts.
    - [probe](#probe): Utility to display GUI Window info.
    - [getconfig](#getconfig): Utility to return the values of properties in the configuration file (for scripting.)
-   - [secret-service](#secret-service): Utility to return tokens (usually passwords) from the Secret Servie (for scripting.)
+   - [secret-service](#secret-service): Utility to return tokens (usually passwords) from the Secret Service (for scripting.)
 2. [Limitations](#limitations)
 3. [Troubleshooting](#troubleshooting)
 
