@@ -33,7 +33,7 @@ This document describes every field and the `input_actions` DSL in full.
 
 ## Contents
 
-- [Copyright &amp; License](#cl)
+- [Copyright &amp; License](#copyright--license)
 - [File structure](#file-structure)
 - [Field reference](#field-reference)
 - [input_actions DSL](#input_actions-dsl)
@@ -48,7 +48,7 @@ This document describes every field and the `input_actions` DSL in full.
 
 ---
 
-### Copyright &amp; License {cl}
+### Copyright &amp; License
 Wayland Desktop Restore (documentation) Copyright © 2026 by Sam Azer &lt;sam dot azer at azertech dot net&gt; is licensed under Creative Commons Attribution-ShareAlike 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/
 
 #### Creative Commons Attribution-ShareAlike 4.0 International

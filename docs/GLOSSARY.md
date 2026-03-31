@@ -32,7 +32,7 @@ project, the technical meaning is given.
 
 ## Contents
 
-- [Copyright &amp; License](#cl)
+- [Copyright &amp; License](#copyright--license)
 - [A](#a) — alias, all-desktops sentinel, app
 - [C](#c) — canonical name, config.yaml, connector name
 - [D](#d) — desktop, desktop alias, drag, dry-run
@@ -52,7 +52,7 @@ project, the technical meaning is given.
 
 ---
 
-### Copyright &amp; License {cl}
+### Copyright &amp; License
 Wayland Desktop Restore (documentation) Copyright © 2026 by Sam Azer &lt;sam dot azer at azertech dot net&gt; is licensed under Creative Commons Attribution-ShareAlike 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/
 
 #### Creative Commons Attribution-ShareAlike 4.0 International

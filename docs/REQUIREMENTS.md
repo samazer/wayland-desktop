@@ -31,7 +31,7 @@
 
 ## Contents
 
-- [Copyright &amp; License](#cl)
+- [Copyright &amp; License](#copyright--license)
 - [Background and motivation](#background-and-motivation)
 - [System description](#system-description)
 - [Functional requirements](#functional-requirements)
@@ -52,7 +52,7 @@
 
 ---
 
-### Copyright &amp; License {cl}
+### Copyright &amp; License
 Wayland Desktop Restore (documentation) Copyright © 2026 by Sam Azer &lt;sam dot azer at azertech dot net&gt; is licensed under Creative Commons Attribution-ShareAlike 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/
 
 #### Creative Commons Attribution-ShareAlike 4.0 International

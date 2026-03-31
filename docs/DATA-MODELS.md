@@ -31,14 +31,14 @@ The three core dataclasses used throughout the library.  All are defined in
 
 ## Contents
 
-- [Copyright &amp; License](#cl)
+- [Copyright &amp; License](#copyright--license)
 - [WindowInfo](#windowinfo)
 - [DesktopInfo](#desktopinfo)
 - [ScreenInfo](#screeninfo)
 
 ---
 
-### Copyright &amp; License {cl}
+### Copyright &amp; License
 Wayland Desktop Restore (documentation) Copyright © 2026 by Sam Azer &lt;sam dot azer at azertech dot net&gt; is licensed under Creative Commons Attribution-ShareAlike 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/
 
 #### Creative Commons Attribution-ShareAlike 4.0 International

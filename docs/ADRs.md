@@ -39,7 +39,7 @@ e.g. ADR-260401-01 for the first decision taken on 2026-04-01.
 
 ## Contents
 
-0. [Copyright &amp; License](#cl)
+ - [Copyright &amp; License](#copyright--license)
 
 | ADR | Decision |
 |---|---|
@@ -69,7 +69,7 @@ e.g. ADR-260401-01 for the first decision taken on 2026-04-01.
 
 ---
 
-### Copyright &amp; License {cl}
+### Copyright &amp; License
 Wayland Desktop Restore (documentation) Copyright © 2026 by Sam Azer &lt;sam dot azer at azertech dot net&gt; is licensed under Creative Commons Attribution-ShareAlike 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/
 
 #### Creative Commons Attribution-ShareAlike 4.0 International
