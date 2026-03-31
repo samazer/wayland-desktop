@@ -1,0 +1,12 @@
+[project]
+name = "wayland-desktop"
+version = "0.1.0"
+description = "A set of command-line tools for programmatic Desktop Setup on boot into KDE Plasma6 on Wayland."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydbus>=0.6.0",
+    "pygobject>=3.56.1",
+    "pygobject-stubs>=2.17.0",
+    "pyyaml>=6.0.3",
+]

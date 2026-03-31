@@ -1,0 +1,227 @@
+# SPDX-FileCopyrightText: 2026 Sam Azer <sam dot azer at azertech dot net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+# =============================================================================
+# ~/.config/wayland-desktop/config.yaml
+#
+# Configuration for kwin_lib window management scripts.
+# Aliases are bidirectional: you can use either the alias or the canonical
+# name in any script argument or snapshot file.
+# =============================================================================
+
+#
+# do not edit: begin
+#
+# Wayland Desktop Setup
+# Plasma6 Session Restore for Wayland, including input injection
+#
+# Copyright © 2026 by Sam Azer<sam dot azer at azertech dot net>, All rights reserved.
+#
+# This software is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# This software is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the [GNU
+# General Public License](LICENSE.md) for more details.
+#
+# You should have received a copy of the [GNU General Public
+# License](LICENSE.md) along with this program.  If not, see
+# <https://www.gnu.org/licenses/>.
+#
+# do not edit: end
+#
+# =============================================================================
+
+
+# ── Virtual desktop aliases ───────────────────────────────────────────────────
+# Format:  alias: "Canonical KWin Desktop Name"
+desktops:
+  Main:     "Main"         # identity — explicit for clarity
+  Job1:     "Job 1"
+  Job2:     "Job 2"
+  Job3:     "Job 3"
+  Plumbing: "Plumbing"
+  Writing:  "Writing"
+  Task1:    "Task 1"
+  Task2:    "Task 2"
+  Task3:    "Task 3"
+  Media:    "Media"
+
+# ── Screen / monitor aliases ──────────────────────────────────────────────────
+# Format:  alias: "KWin connector name"
+# Connector names come from workspace.screens[i].name in KWin scripting.
+screens:
+  top:          "DP-4"        # LG FULL HD, 2885,0  1920x1080
+  main:         "HDMI-A-2"    # FireTV / primary large display, 3840x2160
+  right:        "DP-5"        # Acer B326HUL, 5760,1800  2560x1440
+  left-bottom:  "Unknown-2"   # Acer EK271, 0,2160  1920x1080
+  left-top:     "HDMI-A-1"    # ASUS VG259Q3A, 0,1080  1920x1080
+
+# ── Application overrides ─────────────────────────────────────────────────────
+# Keyed by alias (the name you want to use on the command line / in snapshots).
+# resourceClass:   the KWin resourceClass string for this app
+# single_instance: if true, skip launching if a window is already open
+# command:         override the command derived from the .desktop file (rarely needed)
+# ignore_window:   if true, launch to system tray — don't wait for a window
+# tile:            snap position after placement (leave blank for maximized apps)
+#                  values: left, right, top, bottom,
+#                          top-left, top-right, bottom-left, bottom-right
+apps:
+  thunderbird:
+    resourceClass:   "thunderbird-esr"
+    single_instance: true
+    tile:            ""          # maximized — no tile needed
+
+  brave:
+    resourceClass:   "brave-browser"
+    single_instance: false
+    tile:            ""          # maximized — no tile needed
+
+  konsole:
+    resourceClass:   "org.kde.konsole"
+    single_instance: false
+    tile:            ""          # set e.g. "right" to snap to right half
+
+  dolphin:
+    resourceClass:   "org.kde.dolphin"
+    single_instance: false
+    tile:            ""
+
+  obsidian:
+    resourceClass:   "obsidian"
+    single_instance: true
+    tile:            ""
+
+  systemsettings:
+    resourceClass:   "systemsettings"
+    single_instance: true
+    tile:            ""
+
+  systemmonitor:
+    resourceClass:   "org.kde.plasma-systemmonitor"
+    single_instance: true
+    tile:            ""
+
+  keepassxc:
+    resourceClass:   "org.keepassxc.KeePassXC"
+    single_instance: true
+    tile:            ""          # tray app — tile not applicable
+    # KeePassXC launches directly to the system tray and never shows a main
+    # window at startup.  ignore_window: true tells kwin_restore.py to launch
+    # it without waiting for a window to appear.
+    ignore_window:   true
+
+# ── Snapshot / restore settings ───────────────────────────────────────────────
+snapshot:
+  # Windows whose resourceClass matches any entry in this list are excluded
+  # from snapshots.  These are system/compositor windows with no user-facing
+  # meaning outside the current session.
+  system_classes:
+    - plasmashell
+    - ibus-ui-gtk3
+    - kwin_wayland
+    - krunner
+    - ksmserver
+    - kded6
+    - polkit-kde-authentication-agent-1
+    - xwaylandvideobridge
+    - org.kde.plasmashell
+    - latte-dock
+    - plank
+
+  # Default directory for snapshot files (~ is expanded)
+  snapshot_dir: "~/.config/wayland-desktop/snapshots"
+
+# ── Default setup file ────────────────────────────────────────────────────────
+# Name of the snapshot file that kwin_restore.py uses when no --setup option
+# is given on the command line.  Leave blank to require --setup explicitly.
+#
+# kwin_restore.py searches for this file in order:
+#   1. The current working directory
+#   2. The config directory  (~/.config/wayland-desktop/)
+#   3. The snapshot_dir defined above
+#
+# Example:
+#   default_setup: "setup.yaml"
+default_setup: ""
+
+# ── Progress window ───────────────────────────────────────────────────────────
+# Controls whether kwin_restore.py shows a progress window, and where to
+# place it.
+#
+# Value            Meaning
+# ───────────────  ──────────────────────────────────────────────────────────
+# "" (blank)       No progress window (default).  --show-window on the CLI
+#                  will still show it, wherever KWin chooses to place it.
+# screen alias     Show the window and move it to that screen.  The alias
+#                  must be one of the keys defined in the screens: section
+#                  above.  kwin_restore.py will exit with an error if the
+#                  alias is not found.
+#
+# When a screen alias is given the window is set to "Keep Below Other
+# Windows" (keepBelow) for phases 1–3, minimized during phase 5, and then
+# raised and brought to the front at the end of the restore so it is
+# visible to the user.
+#
+# The command-line flags --show-window and --no-window always override
+# this setting for the current run.  When --show-window is used and
+# progress_window contains a valid screen alias, the screen and keepBelow
+# behaviour described above still applies.  When --show-window is used
+# and progress_window is blank, the window appears wherever KWin places it
+# with no keepBelow.
+#
+# Example:
+#   progress_window: "left-top"
+progress_window: ""
+
+# Set to true to enable the Secret Service integration (KeePassXC).
+# When true, kwin_restore.py opens a Secret Service connection before
+# phase 4 so that {PASS key} tokens in input_actions can be resolved
+# to passwords fetched from KeePassXC at restore time.
+# Requires KeePassXC to be running with Secret Service Integration enabled
+# (Tools → Settings → Settings → Secret Service Integration).
+use_secret_service: false
+
+# ── User scripts folder ───────────────────────────────────────────────────────
+# Directory where user scripts invoked by the `restore` wrapper are stored.
+# The `restore` script looks for `restore-user-before` and `restore-user-after`
+# in this folder.
+#
+# "./" means the same directory as the `restore` script itself (the default).
+# Any path is accepted; relative paths are resolved relative to the wayland-desktop
+# project root.  ~ is expanded.
+#
+# Examples:
+#   user_scripts_folder: "~/.config/wayland-desktop/scripts"  # default
+#   user_scripts_folder: "~/scripts/wayland-desktop"          # another home-relative path
+#   user_scripts_folder: "/opt/restore-scripts"               # absolute path
+#   user_scripts_folder: "./"                                  # project root
+user_scripts_folder: "~/.config/wayland-desktop/scripts"
+
+# ── Maximize geometry tolerances ─────────────────────────────────────────────
+# Used by ensure_maximized() in kwin_lib/window.py to verify that a window
+# actually fills its screen after maximize() is called.
+#
+# On some screens KWin sets the maximized flag but the Wayland client does not
+# immediately resize to fill the screen.  ensure_maximized() reads back the
+# window and screen geometry and retries (unmaximize + maximize) if the
+# dimensions are not within tolerance.
+#
+# width_tolerance:  pixels by which window width may fall short of screen
+#                   width and still be considered maximized.  Default 0.
+#
+# height_tolerance: pixels by which window height may fall short of screen
+#                   height and still be considered maximized.  Set this to
+#                   the height of a docked taskbar panel if the panel reduces
+#                   the usable screen height.  Default 50, which covers a
+#                   standard Plasma panel at the top or bottom of the screen.
+#
+#   Example:
+#     maximize:
+#       width_tolerance:  0
+#       height_tolerance: 50
+maximize:
+  width_tolerance:  0
+  height_tolerance: 50
