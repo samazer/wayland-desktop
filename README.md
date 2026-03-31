@@ -44,7 +44,7 @@ there is no support, yet, for Plasma6 activities.)
 
 ## Contents
 
-0. [Copyright &amp; License](#cl)
+0. [Copyright &amp; License](#copyright--license)
 1. [Command-line tools](#command-line-tools)
    - [restore](#restore)
    - [snapshot](#snapshot)
@@ -58,7 +58,7 @@ there is no support, yet, for Plasma6 activities.)
 
 ---
 
-## Copyright &amp; License {cl}
+## Copyright &amp; License
 
 <!-- do not edit: begin -->
 
@@ -81,9 +81,17 @@ You should have received a copy of the [GNU General Public
 License](LICENSE.md) along with this program.  If not, see
 <https://www.gnu.org/licenses/>.
 
-**Wayland Desktop Setup: Documentation**
+**Wayland Desktop Setup (documentation)**
 
+Wayland Desktop Restore (documentation) Copyright © 2026 by Sam Azer &lt;sam dot azer at azertech dot net&gt; is licensed under Creative Commons Attribution-ShareAlike 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/
 
+#### Creative Commons Attribution-ShareAlike 4.0 International
+This license requires that re-users give credit to the creator. It allows re-users to distribute, remix, adapt, and build upon the material in any medium or format, even for commercial purposes. If others remix, adapt, or build upon the material, they must license the modified material under identical terms.
+
+- Credit must be given to the creator.
+- Adaptations must be shared under the same terms.
+
+[See the full License](https://creativecommons.org/licenses/by-sa/4.0/)
 
 <!-- do not edit: end -->
 

@@ -26,23 +26,21 @@ Some background information about this project.
 
 ## Contents
 
-I started studying AI a years ago when a friend produced a Raspberry Pi box that could recognize cats. It was 
+I started studying AI a few years ago when a friend produced a Raspberry Pi box that could recognize cats. It was 
 interesting.  Of course there were no big LLM's in those days (or none that we knew about.)  We didn't know about 
 Huggingface back then, for example.
 
-Recently, I got stuck on a small problem (which I can't remember anymore.)  Along the way I was forced to switch from 
-X11 to Wayland.  As you know, the Wayland Session Restore is not working yet and is planned for late this year (2026.)  
-I have a complicated desktop with a large number of programs that are launched on startup.  Over the years, I got into 
-the habit of manually doing what I needed to do to get started after a reboot.  The lack of support for Session Restore 
-in Wayland exaggerated this reboot workload too much.  So, I started asking questions on claude.ai.
+Recently, I got stuck on a small problem and was forced to switch from X11 to Wayland.  As you know, the Wayland Session 
+Restore is not working yet and is planned for late this year (2026.)  The lack of support for Session Restore in Wayland 
+exaggerated the work needed to get started after a reboot.  So, I started asking questions on claude.ai.
 
 This led to *Wayland Desktop Setup* being my first serious effort to work with Claude.ai to produce a software tool.
 
-Long story short... Claude was able to search documentation much faster than any human, sometimes doing hours and days 
-worth of research in minutes.  Also, Claude wrote test cases for various issues, including testing and verifying 
-assumptions.  Much of that work has been preserved in the `docs/dev/` folder.  At some point I was rather impressed with 
-what I was seeing.  I started asking Claude to maintain a growing list of documents (see the docs folder,) as well as 
-building various tools and libraries.
+Long story short... Claude was able to search documentation much faster than any human, sometimes doing hours worth of 
+research in minutes.  Also, Claude wrote test cases for various issues, including testing and verifying assumptions.  
+Much of that work has been preserved in the `docs/dev/` folder.  At some point I was rather impressed with what I was 
+seeing.  I started asking Claude to maintain a growing list of documents (see the docs folder,) as well as building 
+various tools and libraries.
 
 Again, I was surprised that the code was running and working (after at least two years of systematically deleting almost 
 anything that was written by an A.I.)  In addition, I was mostly able to tell when Claude was going down a bad 
@@ -64,7 +62,8 @@ that might expose your secrets.
 Also be aware that the feature which handles input injection of Mouse operations is not working at all just now.  The 
 mouse clicks find their way to the wrong parts of the screen/window.  
 
-Aside from that, I can now reboot into a Wayland session and get started much faster than was possible on X11.
+Aside from that, wayland-desktop allows me to reboot into a Wayland session and get started much faster than was 
+possible on X11.
 
 Hopefully there will be other people who will benefit from this project.  Let me know.
 
