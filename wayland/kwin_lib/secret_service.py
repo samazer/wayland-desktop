@@ -163,6 +163,39 @@ def _prompt_if_needed(prompt_path: str) -> None:
         raise RuntimeError("Secret Service unlock prompt was dismissed.")
 
 
+# ── Availability probe ───────────────────────────────────────────────────────
+
+def is_available() -> bool:
+    """
+    Return True if the Secret Service is reachable and able to open a session.
+
+    Performs a lightweight round-trip: creates the Service proxy, calls
+    OpenSession("plain"), then immediately closes the session.  Returns False
+    on any exception.
+
+    This is intentionally a module-level function (not a method) so callers
+    can check availability before constructing a SecretService instance — for
+    example, from a bash wrapper via the 'check' subcommand in
+    kwin_secret_service.py.
+    """
+    try:
+        svc = _proxy(SS_SERVICE, SS_PATH)
+        result = _call(
+            svc, "OpenSession",
+            GLib.Variant("(sv)", ("plain", GLib.Variant("s", ""))),
+        )
+        session_path = result[1]
+        # Close the session we just opened — we only needed the round-trip.
+        try:
+            sess = _proxy(SS_SESSION, session_path)
+            _call(sess, "Close", GLib.Variant("()", ()))
+        except Exception:
+            pass   # Close failure is harmless; the session will expire anyway
+        return True
+    except Exception:
+        return False
+
+
 # ── SecretService ─────────────────────────────────────────────────────────────
 
 class SecretService:

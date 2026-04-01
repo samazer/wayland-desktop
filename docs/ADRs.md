@@ -1073,3 +1073,154 @@ was a source of confusing placement when the screen layout changed.
   successful run, having been raised out from behind other windows.
 - `keepAbove` is no longer set at any point; the window will not obscure
   the windows being restored.
+
+## ADR-260401-01
+
+**Title:** Two-layer guard for Secret Service readiness: bash retry loop + Python hard abort
+
+**Status:** Accepted
+
+**Context:**  
+`kwin_restore.py` supports a `{{PASS}}` token in `input_actions` entries.  When
+`use_secret_service: true` is set in config and the Secret Service provider (e.g.
+KeePassXC) is not yet running or not yet unlocked, the original code treated
+`SecretService.open()` failure as a non-fatal warning: it logged a `[WARN]` line
+and set `secret_service = None`.  The restore continued normally through Phases
+1–3, then silently failed on the first `{{PASS}}` substitution in Phase 4 — an
+opaque mid-run error that gave no clear remediation path.
+
+Additionally, the `restore` bash wrapper presented Dialog #1 ("unlock your
+Password Manager") and Dialog #2 ("watch for pop-up messages") as one-shot
+dialogs with no feedback mechanism.  A user who clicked Continue before their
+password manager had finished unlocking received no indication that the Secret
+Service was not ready.
+
+A `SecretService.open()` failure is always due to one of two root causes:
+
+1. The password manager is not running.
+2. The password manager is running but the Secret Service integration is not
+   enabled (e.g. KeePassXC → Tools → Settings → Secret Service Integration).
+
+Neither is recoverable by retrying the same operation mid-run.  The correct
+user action in both cases is: unlock/configure the password manager, then
+restart the restore.
+
+**Decision:**  
+Implement a two-layer guard:
+
+**Layer 1 — bash retry loop (Dialog #2):**  
+After Dialog #1, read `use_secret_service` from config via `kwin_getconfig.py`.
+Wrap Dialog #2 in a `while true` loop.  After the user clicks Continue:
+- If `use_secret_service` is not `"true"` → break (no probe needed, no change
+  from previous behaviour).
+- If `use_secret_service` is `"true"` → call
+  `python3 kwin_secret_service.py check` (exit 0 = available, 1 = not).
+  - Exit 0 → break and proceed.
+  - Exit 1 → show a `kdialog --sorry` ("Secret Service not ready — please
+    unlock your Password Manager") and loop back to Dialog #2.
+
+Dialog #2 was chosen as the retry point rather than Dialog #1 because
+`restore-user-before` runs between Dialog #1 and Dialog #2.  That hook is the
+natural place for a user to start their password manager.  By probing after
+Dialog #2 the user has the opportunity to act on the Dialog #1 reminder, run
+the hook, and then confirm readiness at Dialog #2.
+
+**Layer 2 — Python hard abort:**  
+In `kwin_restore.py`, change the `except RuntimeError` branch of the Secret
+Service priming block from a soft `logger.warn(...)` + `secret_service = None`
+to a hard abort: raise the progress window (if present), log a structured error
+message with remediation steps, call `win.wait_for_close()`, and `sys.exit(1)`.
+
+This is the second line of defence for users who invoke `kwin_restore.py`
+directly (bypassing the bash wrapper and its Dialog #2 loop).  A soft warning
+is never appropriate here: if `has_pass_tokens` is True and the Secret Service
+is unreachable, Phase 4 will fail regardless — the abort at priming time gives
+a clearer, earlier error message.
+
+**New surface area:**  
+- `kwin_lib/secret_service.py`: module-level `is_available() -> bool` function
+  (lightweight probe: OpenSession + immediate Close; returns False on any
+  exception).
+- `kwin_secret_service.py`: `check` subcommand; delegates to `is_available()`;
+  exits 0/1; prints one-line status to stderr.
+
+**Consequences:**  
+- Users who forget to unlock KeePassXC see Dialog #2 again with a clear "Secret
+  Service not ready" message instead of a cryptic Phase 4 failure.
+- Users who invoke `kwin_restore.py` directly with `{{PASS}}` tokens and an
+  unavailable Secret Service see an immediate, actionable error at startup.
+- The `restore-user-before` hook pattern is preserved and recommended as the
+  place to start background services (including the password manager) before the
+  Secret Service readiness check in Dialog #2.
+- Installs that do not use `use_secret_service` are entirely unaffected: the
+  `_use_ss` variable defaults to `"false"` when `getconfig` fails or the key is
+  absent, so the probe is never run.
+
+## ADR-260401-02
+
+**Title:** Replace lightweight Secret Service probe with full PASS-token verification
+
+**Status:** Accepted  
+**Supersedes:** ADR-260401-01 (partial — the two-layer guard architecture is retained; only the probe mechanism is replaced)
+
+**Context:**  
+ADR-260401-01 introduced a `check` subcommand in `kwin_secret_service.py` and
+an `is_available()` function in `kwin_lib/secret_service.py`.  Both probe the
+Secret Service by calling `OpenSession` and immediately closing the session.
+
+In practice this probe is insufficient.  In a typical KeePassXC setup, the
+D-Bus service (`org.freedesktop.secrets`) is present and `OpenSession` succeeds
+even when the database is locked or when the user has not yet granted per-item
+access.  The authorization dialogs ("Allow access to …?") appear only during
+`get_password()` — not during `OpenSession`.  Therefore:
+
+- `check` (and `is_available()`) always return success as soon as KeePassXC is
+  running, regardless of whether the user has unlocked the database or approved
+  access.
+- The Dialog #2 retry loop in `restore` never triggered because `check` always
+  exited 0.
+- `kwin_restore.py` proceeded to Phase 4, where `get_password()` finally showed
+  the KeePassXC dialogs.  If the user dismissed those dialogs (or dismissed them
+  repeatedly until KeePassXC gave up), priming emitted `[WARN]` lines and
+  continued — then Phase 4 failed on the first `{{PASS}}` substitution.
+
+The root cause: availability of the D-Bus session is a necessary but not
+sufficient condition for Secret Service readiness.  True readiness requires
+that actual secrets can be fetched.
+
+**Decision:**  
+Replace the `check` probe call in the `restore` bash wrapper with a new
+`check-ready` subcommand that performs a full end-to-end verification:
+
+1. Load the setup YAML (same file-search order as `kwin_restore.py`).
+2. Scan all `input_actions` fields for `{PASS key}` tokens (regex
+   `\{PASS\s+([^}]+)\}`, case-insensitive) and collect every unique key in
+   order of first appearance.
+3. If no PASS tokens are found: fall back to the basic `is_available()` probe.
+4. If PASS tokens are found: open a `SecretService` session and call
+   `get_password()` for **every** key.  Print a `[OK    ]` or `[FAILED]` line
+   for each key to stderr.  Exit 0 only if all keys succeeded; exit 1 if any
+   key failed (locked collection, dismissed dialog, missing entry, etc.).
+
+The `check` subcommand is retained unchanged for scripts that only need the
+lightweight probe.
+
+In `kwin_restore.py`, the individual `get_password()` priming failures are
+promoted from `logger.warn()` (non-fatal, restore continues) to a hard abort:
+collect all failed keys, log a structured error listing them, and exit 1.  This
+is the second line of defence for direct invocations that bypass the bash
+wrapper.  A partially-primed state is not recoverable mid-run.
+
+**Consequences:**  
+- The Dialog #2 retry loop in `restore` now correctly fires when KeePassXC is
+  running but the database is locked or the user has not yet granted access.
+- The per-key `[OK]` / `[FAILED]` output on stderr gives the user an exact list
+  of which entries are blocked, rather than a generic "not ready" message.
+- `kwin_restore.py` aborts at priming time (before Phase 1) with the full list
+  of unresolvable keys, rather than failing silently mid-Phase-4.
+- The `check-ready` probe itself triggers the KeePassXC authorization dialog
+  during the bash wrapper's Dialog #2 loop — this is intentional.  The user
+  approves access once at the known, calm moment between dialogs, so Phase 4
+  never needs to show it again.
+- Installs without PASS tokens are unaffected: `check-ready` falls back to
+  `is_available()` when the snapshot contains no `{PASS …}` entries.

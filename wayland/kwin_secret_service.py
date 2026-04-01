@@ -13,6 +13,27 @@
 #
 # COMMANDS
 # --------
+#   check
+#       Test whether the Secret Service is reachable and able to open a
+#       session.  Exits 0 if available, 1 if not.  Prints a one-line result
+#       to stderr.  This is a lightweight probe (OpenSession only) and does
+#       NOT verify that individual secrets can be fetched.
+#
+#   check-ready [--setup FILE] [--config FILE]
+#       Full readiness check for use by the 'restore' bash wrapper.
+#       Loads the setup YAML, collects every unique {PASS key} token from
+#       input_actions fields, then attempts get_password() for each key.
+#       Prints a per-key pass/fail line to stderr so the user can see which
+#       entries are blocked or missing.
+#       Exits 0 only if ALL keys were retrieved successfully.
+#       Exits 1 if ANY key failed (locked, dismissed, or not found).
+#       Falls back to the basic is_available() probe if no PASS tokens are
+#       present in the snapshot.
+#       Setup file search order (same as kwin_restore.py):
+#         1. --setup FILE (explicit path)
+#         2. default_setup from config.yaml, searched in:
+#              current dir → ~/.config/wayland-desktop/ → snapshot_dir
+#
 #   list [--verbose]
 #       List all items in the default collection.  Prints label and UserName
 #       attribute for each entry, sorted by label.  With --verbose, prints
@@ -24,11 +45,16 @@
 #
 # USAGE
 # -----
+#   python3 wayland/kwin_secret_service.py check
+#   python3 wayland/kwin_secret_service.py check-ready
+#   python3 wayland/kwin_secret_service.py check-ready --setup /path/to/setup.yaml
 #   python3 wayland/kwin_secret_service.py list
 #   python3 wayland/kwin_secret_service.py list --verbose
 #   python3 wayland/kwin_secret_service.py lookup "router-admin"
 #
 #   # Via the secret-service wrapper (from the project root):
+#   secret-service check
+#   secret-service check-ready
 #   secret-service list
 #   secret-service lookup "router-admin"
 #
@@ -67,9 +93,21 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
+from pathlib import Path
 
+import yaml
 from gi.repository import GLib, Gio
+
+# is_available() and SecretService live in kwin_lib so they can also be called
+# from kwin_restore.py.  We import them here to expose them via the 'check'
+# and 'check-ready' subcommands for bash callers.
+import os as _os
+sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from kwin_lib.secret_service import is_available as _ss_is_available
+from kwin_lib.secret_service import SecretService as _SecretService
+from kwin_lib.config         import load_config
 
 
 # ── D-Bus constants ───────────────────────────────────────────────────────────
@@ -198,7 +236,179 @@ def _close_session(session_path: str) -> None:
         pass
 
 
+# ── Setup-file resolution and PASS-token extraction ───────────────────────────
+
+# Matches {PASS key} tokens in input_actions DSL, case-insensitive.
+# The key is everything after "PASS " up to the closing brace, stripped.
+_PASS_RE = re.compile(r"\{PASS\s+([^}]+)\}", re.IGNORECASE)
+
+
+def _resolve_setup_file(setup_arg: str | None, cfg) -> Path | None:
+    """
+    Reproduce the setup-file search order used by kwin_restore.py.
+
+    Priority:
+      1. setup_arg (explicit --setup path, ~ expanded)
+      2. cfg.default_setup filename, searched in:
+           current dir → ~/.config/wayland-desktop/ → cfg.snapshot_dir
+    Returns None if the file cannot be found.
+    """
+    if setup_arg:
+        p = Path(setup_arg).expanduser()
+        return p if p.exists() else None
+
+    if not cfg.default_setup:
+        return None
+
+    filename   = cfg.default_setup
+    config_dir = Path("~/.config/wayland-desktop").expanduser()
+    for candidate in [
+        Path(filename),
+        config_dir / filename,
+        cfg.snapshot_dir / filename,
+    ]:
+        resolved = candidate.expanduser().resolve()
+        if resolved.exists():
+            return resolved
+
+    return None
+
+
+def _collect_pass_keys(setup_path: Path) -> list[str]:
+    """
+    Load the setup YAML and collect every unique {PASS key} token found in
+    any input_actions field, preserving the order of first appearance.
+    Returns an empty list if no PASS tokens are present.
+    """
+    try:
+        with setup_path.open(encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except Exception as exc:
+        print(f"Secret Service check-ready: cannot load setup file: {exc}",
+              file=sys.stderr)
+        return []
+
+    seen: set[str]   = set()
+    keys: list[str]  = []
+
+    entries = []
+    if isinstance(data, dict):
+        entries = data.get("entries", []) or []
+    if isinstance(data, list):
+        entries = data
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        dsl = (entry.get("input_actions") or "").strip()
+        if not dsl:
+            continue
+        for m in _PASS_RE.finditer(dsl):
+            key = m.group(1).strip()
+            if key and key not in seen:
+                seen.add(key)
+                keys.append(key)
+
+    return keys
+
+
 # ── Commands ──────────────────────────────────────────────────────────────────
+
+def cmd_check_ready(args) -> int:
+    """
+    Full Secret Service readiness check for the 'restore' bash wrapper.
+
+    Loads the setup YAML, collects every unique {PASS key} token from
+    input_actions fields, then attempts get_password() for each key.
+    Prints a per-key pass/fail line to stderr so the user can see which
+    entries are blocked or missing.  Exits 0 only if ALL keys succeeded.
+
+    Falls back to the basic is_available() probe when the setup file
+    cannot be found or contains no PASS tokens.
+    """
+    cfg = load_config(getattr(args, "config", None) or None)
+
+    setup_arg  = getattr(args, "setup", None) or None
+    setup_path = _resolve_setup_file(setup_arg, cfg)
+
+    if setup_path is None:
+        # Cannot find the setup file — fall back to the lightweight probe.
+        print("Secret Service check-ready: setup file not found, "
+              "falling back to basic availability check", file=sys.stderr)
+        if _ss_is_available():
+            print("Secret Service: available (no PASS tokens verified)",
+                  file=sys.stderr)
+            return 0
+        else:
+            print("Secret Service: not available", file=sys.stderr)
+            return 1
+
+    pass_keys = _collect_pass_keys(setup_path)
+
+    if not pass_keys:
+        # No PASS tokens in snapshot — basic probe is sufficient.
+        if _ss_is_available():
+            print("Secret Service: available (no PASS tokens in snapshot)",
+                  file=sys.stderr)
+            return 0
+        else:
+            print("Secret Service: not available", file=sys.stderr)
+            return 1
+
+    # Attempt to fetch every PASS key and report per-key results.
+    print(f"Secret Service check-ready: testing {len(pass_keys)} PASS "
+          f"token(s) from {setup_path.name}", file=sys.stderr)
+
+    ss = _SecretService()
+    try:
+        ss.open()
+    except RuntimeError as exc:
+        print(f"Secret Service: cannot open session — {exc}", file=sys.stderr)
+        return 1
+
+    all_ok = True
+    try:
+        for key in pass_keys:
+            try:
+                ss.get_password(key)
+                print(f"  [OK    ] {key!r}", file=sys.stderr)
+            except Exception as exc:
+                # Strip trailing newlines from the exception message so the
+                # per-key line stays on one line for easy reading.
+                reason = str(exc).splitlines()[0]
+                print(f"  [FAILED] {key!r} — {reason}", file=sys.stderr)
+                all_ok = False
+    finally:
+        ss.close()
+
+    if all_ok:
+        print("Secret Service: all PASS tokens verified OK", file=sys.stderr)
+        return 0
+    else:
+        print("Secret Service: one or more PASS tokens could not be fetched",
+              file=sys.stderr)
+        return 1
+
+
+def cmd_check(args) -> int:
+    """
+    Test whether the Secret Service is reachable.
+
+    Calls is_available() from kwin_lib.secret_service, which opens a plain
+    session and immediately closes it.  Exits 0 if the service responded, 1
+    if not.  The one-line result is written to stderr so it does not pollute
+    stdout when this command is used inside shell $() capture.
+
+    This is the entry point used by the 'restore' bash wrapper to decide
+    whether to loop Dialog #2 or proceed.
+    """
+    if _ss_is_available():
+        print("Secret Service: available", file=sys.stderr)
+        return 0
+    else:
+        print("Secret Service: not available", file=sys.stderr)
+        return 1
+
 
 def cmd_list(args) -> int:
     """List all items in the collection with their labels."""
@@ -300,6 +510,8 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Commands:\n"
+            "  check               Exit 0 if Secret Service is reachable, 1 if not\n"
+            "  check-ready         Fetch every {PASS key} from snapshot; exit 0 if all OK\n"
             "  list                List all item labels (and UserName attributes)\n"
             "  lookup <key>        Print the secret for the item with label <key>\n"
             "\n"
@@ -313,6 +525,21 @@ def main() -> None:
     )
     sub = parser.add_subparsers(dest="command")
 
+    sub.add_parser("check", help="Test Secret Service availability (exit 0=ok, 1=unavailable)")
+
+    p_check_ready = sub.add_parser(
+        "check-ready",
+        help="Fetch every {PASS key} from snapshot; exit 0 only if all succeed",
+    )
+    p_check_ready.add_argument(
+        "--setup", default="", metavar="FILE",
+        help="Snapshot file to inspect (default: read default_setup from config.yaml)",
+    )
+    p_check_ready.add_argument(
+        "--config", default="", metavar="FILE",
+        help="Alternate config file",
+    )
+
     p_list = sub.add_parser("list", help="List all items")
     p_list.add_argument("--verbose", action="store_true",
                         help="Show all attributes for each item")
@@ -325,7 +552,12 @@ def main() -> None:
         parser.print_help()
         sys.exit(0)
 
-    sys.exit({"list": cmd_list, "lookup": cmd_lookup}[args.command](args))
+    sys.exit({
+        "check":       cmd_check,
+        "check-ready": cmd_check_ready,
+        "list":        cmd_list,
+        "lookup":      cmd_lookup,
+    }[args.command](args))
 
 
 if __name__ == "__main__":

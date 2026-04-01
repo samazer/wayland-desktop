@@ -105,15 +105,51 @@ if [[ -x "$_user_before" ]]; then
     "$_user_before"
 fi
 
+# -- Check whether the Secret Service is required by the current config -------
+# Reads use_secret_service from config.yaml.  If the key is absent or getconfig
+# fails for any reason, we default to "false" (no check performed), so the
+# behaviour is unchanged for installs that don't use the Secret Service.
+_use_ss="$(python3 "$SCRIPT_DIR/wayland/kwin_getconfig.py" lookup use_secret_service 2>/dev/null || echo "false")"
 
-# -- Dialog 2: Pop-up warning -------------------------------------------------
-if ! kdialog \
-        --title "Desktop Setup - Ready to Start" \
-        --warningcontinuecancel \
-        $'If your Password Manager is not yet started, cancel this task, get the Password Manager working and then restart the Desktop Setup.\nIf you are ready to proceed: WATCH OUT for Pop-Up Approval Messages!\n\n(They may appear UNDER other Windows!)' \
-        2>/dev/null; then
-    exit 0
-fi
+# -- Dialog 2: Pop-up warning (with Secret Service readiness loop) ------------
+# If use_secret_service is enabled, we probe the Secret Service after the user
+# clicks Continue.  If it is not responding yet (e.g. KeePassXC is not yet
+# unlocked after a reboot), we show a brief sorry dialog and loop back to
+# Dialog #2, giving the user another chance to unlock the password manager.
+# The loop exits as soon as:
+#   (a) the user cancels, or
+#   (b) use_secret_service is false (no probe required), or
+#   (c) the Secret Service probe succeeds.
+while true; do
+    if ! kdialog \
+            --title "Desktop Setup - Ready to Start" \
+            --warningcontinuecancel \
+            $'If your Password Manager is not yet started, cancel this task, get the Password Manager working and then restart the Desktop Setup.\nIf you are ready to proceed: WATCH OUT for Pop-Up Approval Messages!\n\n(They may appear UNDER other Windows!)' \
+            2>/dev/null; then
+        exit 0
+    fi
+
+    # No Secret Service requirement — proceed immediately.
+    if [[ "$_use_ss" != "true" ]]; then
+        break
+    fi
+
+    # Secret Service is required — probe it now by attempting to fetch every
+    # {PASS key} token from the snapshot.  Exits 0 only if all keys succeed;
+    # exits 1 if any key is blocked (dismissed dialog, locked collection, etc.)
+    if python3 "$SCRIPT_DIR/wayland/kwin_secret_service.py" check-ready 2>/dev/null; then
+        # Service is up — proceed.
+        break
+    fi
+
+    # Service is not responding.  Prompt the user and loop back to Dialog #2.
+    kdialog \
+        --title "Desktop Setup — Secret Service Not Ready" \
+        --sorry \
+        $'The Secret Service is not responding.\n\nPlease unlock your Password Manager, then click OK to try again.' \
+        2>/dev/null || true
+    # Loop back to Dialog #2.
+done
 
 # -- Run the Python restore script --------------------------------------------
 # Not exec'd (unlike --dry-run above) so we can run restore-user-after below.

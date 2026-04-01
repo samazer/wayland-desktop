@@ -811,26 +811,66 @@ def main() -> None:
     # -- Prime Secret Service connection --------------------------------------
     # Connection opened now — before Phase 1 — so KeePassXC approval dialogs
     # appear at a known, calm moment.  Stays open through Phase 4.
+    #
+    # If use_secret_service is enabled in config but the service cannot be
+    # reached (e.g. the password manager was not unlocked after a reboot), we
+    # raise RuntimeError immediately.  A soft warning here would only defer the
+    # failure to Phase 4 where a {{PASS}} token is substituted, producing a
+    # cryptic mid-run error.  The restore bash wrapper already guards against
+    # this with its Dialog #2 loop, but kwin_restore.py is also invoked
+    # directly, so we enforce the invariant here as a second line of defence.
     secret_service: SecretService | None = None
     if has_pass_tokens and pass_keys:
         try:
             secret_service = SecretService()
             secret_service.open()
             logger.info("Secret Service: connection opened")
+            failed_keys: list[str] = []
             for key in sorted(pass_keys):
                 try:
                     secret_service.get_password(key)
                     logger.info(f"Secret Service: primed {key!r}")
                 except Exception as exc:
-                    logger.warn(
-                        f"Secret Service: could not prime {key!r}: {exc}"
-                    )
+                    reason = str(exc).splitlines()[0]
+                    logger.warn(f"Secret Service: could not prime {key!r}: {reason}")
+                    failed_keys.append(key)
+            if failed_keys:
+                # One or more passwords are unreachable.  Continuing into Phase 4
+                # would fail on the first {{PASS}} substitution with a cryptic error.
+                # Abort now with a clear list of which keys could not be fetched.
+                if win and win.is_showing():
+                    win.raise_to_front()
+                else:
+                    logger.show_window()
+                logger.error(
+                    f"Secret Service: {len(failed_keys)} PASS token(s) could not "
+                    f"be fetched — aborting restore.\n"
+                    f"  Failed keys: {', '.join(repr(k) for k in failed_keys)}\n"
+                    f"  Ensure your Password Manager is running, unlocked, and has "
+                    f"approved the Secret Service request."
+                )
+                if win:
+                    win.set_complete()
+                    win.wait_for_close()
+                sys.exit(1)
         except RuntimeError as exc:
-            logger.warn(
-                f"Secret Service: cannot open — {{PASS}} tokens will "
-                f"fail: {exc}"
+            # Hard abort: the Secret Service is required (use_secret_service is
+            # true and the snapshot contains {{PASS}} tokens) but is not
+            # reachable.  Continuing would fail silently later in Phase 4.
+            if win and win.is_showing():
+                win.raise_to_front()
+            else:
+                logger.show_window()
+            logger.error(
+                f"Secret Service: cannot open — aborting restore.\n"
+                f"  Ensure your Password Manager is running and unlocked.\n"
+                f"  For KeePassXC: Tools → Settings → Secret Service Integration\n"
+                f"  Detail: {exc}"
             )
-            secret_service = None
+            if win:
+                win.set_complete()
+                win.wait_for_close()
+            sys.exit(1)
 
     session_state   = SessionState.load()
     results: list[RestoreResult] = []
