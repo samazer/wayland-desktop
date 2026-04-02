@@ -1183,14 +1183,10 @@ def main() -> None:
             # -- Return to the desktop that was active when the script started -
             # Done last so all phases (including phase 4 input actions, which may
             # switch desktops) have fully completed before we move the user back.
-            # raise_to_front() turns off keepBelow, unminimizes, and raises the
-            # progress window so the user can see the completion summary.
-            # It also covers the case where phase 4 left the window hidden.
-            if win and win.is_showing():
-                win.raise_to_front()
-            else:
-                # No progress window — still flush any dangling hide_window call.
-                logger.show_window()
+            # The desktop switch is done BEFORE raise_to_front() so that KWin
+            # has fully settled the switch before the raise script fires (~800ms
+            # after the command is queued).  Raising while a desktop switch is
+            # in progress causes the window to be buried again.
             if restore_desktop_id and not args.dry_run:
                 try:
                     restore_desktop = kwin.desktops.find_desktop(
@@ -1209,6 +1205,15 @@ def main() -> None:
                         f"Could not return to starting desktop: {exc} "
                         f"(non-fatal)"
                     )
+
+            # raise_to_front() turns off keepBelow, unminimizes, and raises the
+            # progress window so the user can see the completion summary.
+            # It also covers the case where phase 4 left the window hidden.
+            if win and win.is_showing():
+                win.raise_to_front()
+            else:
+                # No progress window — still flush any dangling hide_window call.
+                logger.show_window()
 
     except RuntimeError as exc:
         # Ensure the progress window is visible before showing the error —

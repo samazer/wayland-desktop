@@ -10,6 +10,7 @@
 #
 # Usage:
 #   restore [kwin_restore.py options...]
+#   restore APP [kwin_restore.py options...]
 #
 # Recommended shell alias:
 #   alias restore="$HOME/.bnt/wayland-desktop/restore"
@@ -32,6 +33,12 @@
 #       after this hook returns).  Use it for post-restore tasks such as
 #       opening a terminal, triggering notifications, or cleaning up
 #       temporary files created by restore-user-before.
+#
+# When a positional APP argument is supplied (e.g. "restore chrome"), both
+# hook scripts are suppressed (REQ-06.14).  This lets users test individual
+# application placement without triggering heavyweight setup tasks — such as
+# mounting network shares or starting VPN services — that the hooks perform
+# during a full restore.
 # =============================================================================
 #
 # do not edit: begin
@@ -72,6 +79,30 @@ for arg in "$@"; do
     fi
 done
 
+# -- Detect a positional APP argument (REQ-06.14) -----------------------------
+# Flags that consume the following token as their value — those tokens must
+# not be mistaken for a program name.
+_value_flags="--setup --config --log --timeout --delay --settle-delay --phase5-delay --filter"
+
+_skip_user_scripts=false
+_prev_arg=""
+for arg in "$@"; do
+    # If the previous token was a value-taking flag, this token is its value.
+    _is_flag_value=false
+    for _vf in $_value_flags; do
+        if [[ "$_prev_arg" == "$_vf" ]]; then
+            _is_flag_value=true
+            break
+        fi
+    done
+
+    if [[ "$_is_flag_value" == false && "$arg" != -* && -n "$arg" ]]; then
+        # Non-flag, non-empty token that is not a flag value → program name.
+        _skip_user_scripts=true
+    fi
+    _prev_arg="$arg"
+done
+
 # -- Dialog 1: Ready to restore? ----------------------------------------------
 # --warningcontinuecancel returns 0 for Continue, non-zero for Cancel.
 if ! kdialog \
@@ -100,8 +131,9 @@ USER_SCRIPTS_FOLDER="$(cd "$_raw_folder" 2>/dev/null && pwd || echo "$SCRIPT_DIR
 # -- Run restore-user-before if present ---------------------------------------
 # Typical use: launch background apps (e.g. VPNs, SSH agents, servers)
 # that kwin_restore.py will expect to be running.
+# Suppressed when a single APP argument is supplied (REQ-06.14).
 _user_before="$USER_SCRIPTS_FOLDER/restore-user-before"
-if [[ -x "$_user_before" ]]; then
+if [[ "$_skip_user_scripts" == false && -x "$_user_before" ]]; then
     "$_user_before"
 fi
 
@@ -161,8 +193,9 @@ python3 "$RESTORE_PY" "$@" || _restore_exit=$?
 # Typical use: post-restore tasks such as opening a terminal, sending a
 # notification, or cleaning up temporary state created by restore-user-before.
 # The original exit code of kwin_restore.py is re-applied after this hook.
+# Suppressed when a single APP argument is supplied (REQ-06.14).
 _user_after="$USER_SCRIPTS_FOLDER/restore-user-after"
-if [[ -x "$_user_after" ]]; then
+if [[ "$_skip_user_scripts" == false && -x "$_user_after" ]]; then
     "$_user_after"
 fi
 

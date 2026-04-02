@@ -284,8 +284,11 @@ def _window_process(
                     # Small delay so KWin has settled before we minimise.
                     QTimer.singleShot(200, self._do_minimize)
                 elif kind == _CMD_RAISE_TO_FRONT:
-                    # Small delay so KWin has settled before we raise.
-                    QTimer.singleShot(200, self._do_raise_to_front)
+                    # 800ms delay: the caller (kwin_restore.py) switches the
+                    # active desktop immediately before queuing this command.
+                    # KWin needs time to fully settle the desktop switch before
+                    # a raise script will reliably bring the window to the front.
+                    QTimer.singleShot(800, self._do_raise_to_front)
 
         # ── Append a coloured line to the log pane ────────────────────────────
 
@@ -321,8 +324,10 @@ def _window_process(
         def _move_to_screen(self, screen_name: str) -> None:
             # Finds the window by PID, moves it to the named screen connector,
             # and sets keepBelow=true so it stays behind other windows.
+            #
+            # ws[i].screen / ws[i].output is read-only in the KWin scripting
+            # sandbox (CON-02).  The correct API is sendClientToScreen().
             pid = os.getpid()
-            # screen_name is a KWin connector string (e.g. "DP-4")
             js = (
                 f"var ws=workspace.windowList();"
                 f"for(var i=0;i<ws.length;i++){{"
@@ -330,7 +335,7 @@ def _window_process(
                 f"var sc=workspace.screens;"
                 f"for(var j=0;j<sc.length;j++){{"
                 f"if(sc[j].name==={screen_name!r}){{"
-                f"ws[i].screen=sc[j];break;}}}}"
+                f"workspace.sendClientToScreen(ws[i],sc[j]);break;}}}}"
                 f"ws[i].keepBelow=true;"
                 f"break;}}}}"
             )

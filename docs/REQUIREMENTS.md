@@ -324,6 +324,13 @@ begin with a header line containing the timestamp and the full command line
 used to invoke the script.  The tee shall be installed before any other output
 is produced so that the complete run is captured.
 
+**REQ-06.14** — When the `restore` wrapper is invoked with a positional APP
+argument, it shall suppress both user hook scripts (`restore-user-before` and
+`restore-user-after`).  This allows users to test the placement of a single
+application without triggering heavyweight setup tasks (such as mounting
+network shares or starting VPN services) that the hook scripts typically
+perform.
+
 ---
 
 ### REQ-07 Session tracking
@@ -561,6 +568,7 @@ persisted to skip the dialog on subsequent runs.
 | REQ-06.10–06.11 Setup file / single-app arg | ✓ Complete | `--setup`, `resolve_setup_file()`, positional `APP` |
 | REQ-06.12 Progress window | ✓ Complete | `kwin_lib/progress_window.py`; `--show-window` / `--no-window` |
 | REQ-06.13 Log file | ✓ Complete | `--log FILE`; `_TeeWriter` / `_install_log_tee()` in `restore` |
+| REQ-06.14 Single-app suppresses hooks | ✓ Complete | `restore` bash wrapper; positional arg detection loop |
 | REQ-07 Session tracking | ✓ Complete | `session_state.py`; ADR-260321-01 |
 | REQ-08 Drift correction | ✓ Complete | `realign`; screen map keyed by `id(entry)` to handle duplicate aliases |
 | REQ-09.1–09.3 Tile/snap positioning | ✓ Complete | `WindowManager.tile()`; ADR-260322-04 |

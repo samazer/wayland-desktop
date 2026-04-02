@@ -453,6 +453,7 @@ def main() -> None:
     if not entries:
         logger.warn("No entries to realign.")
         if win:
+            win.raise_to_front()
             win.set_complete()
             win.wait_for_close()
         sys.exit(0)
@@ -671,6 +672,7 @@ def main() -> None:
     except RuntimeError as exc:
         error(f"Session error: {exc}")
         if win:
+            win.raise_to_front()
             win.set_complete()
             win.wait_for_close()
         sys.exit(1)
@@ -685,7 +687,10 @@ def main() -> None:
 
     logger.head("=== Done ===========================================================")
 
+    # raise_to_front() clears keepBelow (set by move_to_screen at startup)
+    # and raises the window so the user can see the summary and hit Close.
     if win and win.is_showing():
+        win.raise_to_front()
         win.set_complete()
         win.wait_for_close()
 
