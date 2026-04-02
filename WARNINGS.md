@@ -10,7 +10,7 @@ These notes are provided as a convenience.  This document contains information a
 | Document                                     | Description                                                                    |
 |:---------------------------------------------|:-------------------------------------------------------------------------------|
 | [docs/OVERVIEW.md](docs/OVERVIEW.md)         | How the library works                                                          |
-| [docs/INSTALL.md](docs/INSTALL.md)           | Insetallation and setup information.                                           |
+| [docs/INSTALL.md](docs/INSTALL.md)           | Installation and setup information.                                           |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System context and design overview                                             |
 | [docs/PROBLEMS.md](docs/PROBLEMS.md)         | Known limitations and open issues                                              |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md)         | Definitions of terms used in the codebase and documentation                    |

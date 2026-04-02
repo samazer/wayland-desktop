@@ -21,7 +21,7 @@ e.g. ADR-260401-01 for the first decision taken on 2026-04-01.
 |:-----------------------------------|:---------------------------------------------------|
 | [README.md](../README.md)          | Installation, configuration, CLI tools             |
 | [OVERVIEW.md](OVERVIEW.md)         | How the library works                              |
-| [INSTALL.md](INSTALL.md)           | Insetallation and setup information.               |
+| [INSTALL.md](INSTALL.md)           | Installation and setup information.               |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System context and design overview                 |
 | [PROBLEMS.md](PROBLEMS.md)         | Known limitations and open issues                  |
 | [../WARNINGS.md](../WARNINGS.md)   | User-Level Usage Warnings | 

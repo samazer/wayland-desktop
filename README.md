@@ -27,7 +27,7 @@ there is no support, yet, for Plasma6 activities.)
 | Document                                     | Description                                                                          |
 |:---------------------------------------------|:-------------------------------------------------------------------------------------|
 | [docs/OVERVIEW.md](docs/OVERVIEW.md)         | How the library works                                                                |
-| [docs/INSTALL.md](docs/INSTALL.md)           | Insetallation and setup information.                                                 |
+| [docs/INSTALL.md](docs/INSTALL.md)           | Installation and setup information.                                                 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System context and design overview                                                   |
 | [docs/PROBLEMS.md](docs/PROBLEMS.md)         | Known limitations and open issues                                                    |
 | [WARNINGS.md](WARNINGS.md) | User-level Usage Warnings |
