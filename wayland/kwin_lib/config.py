@@ -161,7 +161,14 @@ class KWinConfig:
             return cfg
 
         with open(fpath, encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+            raw = f.read()
+
+        # YAML does not permit literal tab characters (REQ-04.10).
+        # Replace every tab with a space before parsing so a stray indentation
+        # tab does not produce a yaml.scanner.ScannerError and abort the run.
+        raw = raw.replace("\t", " ")
+
+        data = yaml.safe_load(raw) or {}
 
         # Desktops
         for alias, canonical in (data.get("desktops") or {}).items():
