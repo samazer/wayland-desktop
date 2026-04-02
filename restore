@@ -77,7 +77,7 @@ done
 if ! kdialog \
         --title "Desktop Setup — Getting Started" \
         --warningcontinuecancel \
-        $'If you use the Secret Service protocol,\nyou must Unlock your Password Manager.\n' \
+        $'If you have installed a user-specifc setup script, it will run next.\nIf you use the Secret Service protocol,\nyou must Unlock your Password Manager\nduring the next step.' \
         2>/dev/null; then
     exit 0
 fi
@@ -124,7 +124,7 @@ while true; do
     if ! kdialog \
             --title "Desktop Setup - Ready to Start" \
             --warningcontinuecancel \
-            $'If your Password Manager is not yet started, cancel this task, get the Password Manager working and then restart the Desktop Setup.\nIf you are ready to proceed: WATCH OUT for Pop-Up Approval Messages!\n\n(They may appear UNDER other Windows!)' \
+            $'If you use the Secret Service protocol, make sure your Password Manager is unlocked before you continue.\nIf you are ready to proceed: WATCH OUT for Pop-Up Approval Messages!\n\n(They may appear UNDER other Windows!)' \
             2>/dev/null; then
         exit 0
     fi
