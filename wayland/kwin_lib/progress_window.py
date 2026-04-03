@@ -102,6 +102,9 @@ _CMD_MINIMIZE     = "minimize"
 # Turn off keepBelow, unminimize, and raise the window to the front
 # (used at end of Phase 5 so the user can see the completion summary).
 _CMD_RAISE_TO_FRONT = "raise_to_front"
+# Update the window title bar text (used just before wait_for_close to
+# indicate success or failure to the user at a glance).
+_CMD_SET_TITLE    = "set_title"
 
 # Dark-terminal colour scheme for the log pane
 _BG_COLOUR = "#1e1e1e"
@@ -121,6 +124,7 @@ _CMD_LOG      = "log"
 _CMD_COMPLETE = "complete"
 _CMD_HIDE     = "hide"
 _CMD_SHOW     = "show"
+_CMD_SET_TITLE = "set_title"
 
 
 # ── Child-process entry point — must be module-level for pickling ─────────────
@@ -289,6 +293,9 @@ def _window_process(
                     # KWin needs time to fully settle the desktop switch before
                     # a raise script will reliably bring the window to the front.
                     QTimer.singleShot(800, self._do_raise_to_front)
+                elif kind == _CMD_SET_TITLE:
+                    # Update the window title bar immediately.
+                    self.setWindowTitle(cmd[1])
 
         # ── Append a coloured line to the log pane ────────────────────────────
 
@@ -527,6 +534,20 @@ class ProgressWindow:
             except Exception:
                 pass
 
+    def set_title(self, text: str) -> None:
+        """
+        Update the window title bar.
+
+        Called just before set_complete() / wait_for_close() to signal
+        success ("All done: X Completed") or failure
+        ("Error: X Failed, see log for details") at a glance.
+        """
+        if self.is_showing():
+            try:
+                self._cmd_queue.put_nowait((_CMD_SET_TITLE, text))
+            except Exception:
+                pass
+
     def wait_for_close(self) -> None:
         """Block until the user closes the progress window."""
         if self._process and self._process.is_alive():
@@ -611,3 +632,8 @@ class ProgressWindowLogger:
         """Re-show the progress window after it was hidden."""
         if self._win and self._win.is_showing():
             self._win.show_window()
+
+    def set_title(self, text: str) -> None:
+        """Update the window title bar (no-op when there is no window)."""
+        if self._win and self._win.is_showing():
+            self._win.set_title(text)

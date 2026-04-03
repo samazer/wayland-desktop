@@ -1371,11 +1371,9 @@ def _filter_entries(
     if not entries:
         logger.warn("No entries to restore.")
         if win:
+            win.set_title("All done: Restore Completed (nothing to do)")
             win.set_complete()
             win.wait_for_close()
-        sys.exit(0)
-
-    return entries
 
 
 def _scan_action_tokens(
@@ -1489,11 +1487,9 @@ def _prime_secret_service(
             logger.show_window()
         logger.error(msg)
         if win:
+            win.set_title("Error: Restore Failed, see log for details")
             win.set_complete()
             win.wait_for_close()
-        sys.exit(1)
-
-    try:
         secret_service = SecretService()
         secret_service.open()
         logger.info("Secret Service: connection opened")
@@ -1617,6 +1613,7 @@ def main() -> None:
                 pass  # non-fatal: error reporting below takes priority
         logger.error(f"Session error: {exc}")
         if win:
+            win.set_title("Error: Restore Failed, see log for details")
             win.set_complete()
             win.wait_for_close()
         sys.exit(1)
@@ -1657,6 +1654,7 @@ def main() -> None:
 
     # -- Close progress window ------------------------------------------------
     if win and win.is_showing():
+        win.set_title("All done: Restore Completed")
         win.set_complete()
         win.wait_for_close()
 

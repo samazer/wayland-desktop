@@ -454,6 +454,7 @@ def main() -> None:
         logger.warn("No entries to realign.")
         if win:
             win.raise_to_front()
+            win.set_title("All done: Realign Completed (nothing to do)")
             win.set_complete()
             win.wait_for_close()
         sys.exit(0)
@@ -673,6 +674,7 @@ def main() -> None:
         error(f"Session error: {exc}")
         if win:
             win.raise_to_front()
+            win.set_title("Error: Realign Failed, see log for details")
             win.set_complete()
             win.wait_for_close()
         sys.exit(1)
@@ -691,6 +693,7 @@ def main() -> None:
     # and raises the window so the user can see the summary and hit Close.
     if win and win.is_showing():
         win.raise_to_front()
+        win.set_title("All done: Realign Completed")
         win.set_complete()
         win.wait_for_close()
 
