@@ -204,6 +204,13 @@ class SnapshotEntry:
     # window.  kwin_restore.py will launch it and immediately move on without
     # waiting for a window to appear.  No placement is performed.
     ignore_window:    bool          = False
+    # Launch priority group (0–99, default 50).  Lower values launch first.
+    # All entries sharing the same priority are processed together as one batch;
+    # batches are separated by a settling pause (PRIORITY_BETWEEN_DELAY in
+    # kwin_restore.py) so that high-VRAM applications (e.g. Ollama,
+    # plasma-systemmonitor) can complete their GPU memory allocations before
+    # lower-priority apps start.  See ADR-260402-01.
+    priority:         int           = 50
     # Tile position to apply in phase 3 instead of maximizing.
     # Values: left, right, top, bottom, top-left, top-right,
     #         bottom-left, bottom-right.  Empty string means no tile.
@@ -254,6 +261,7 @@ class SnapshotEntry:
             "command":          self.command,
             "single_instance":  self.single_instance,
             "ignore_window":    self.ignore_window,
+            "priority":         self.priority,
             "tile":             self.tile,
             # Session tracking UUID — stamped onto the KWin window object
             # at restore time as Qt dynamic property "kwinlib_uuid".
@@ -313,6 +321,7 @@ class SnapshotEntry:
             command          = str(d.get("command",           "")),
             single_instance  = bool(d.get("single_instance",  False)),
             ignore_window    = bool(d.get("ignore_window",     False)),
+            priority         = max(0, min(99, int(d.get("priority", 50) or 50))),
             tile             = str(d.get("tile",               "")).strip(),
             tracking_uuid    = tracking_uuid,
             input_actions    = str(d.get("input_actions",      "") or "").strip(),
@@ -441,6 +450,8 @@ class LayoutSnapshot:
         out.write("# desktop: '*' means the window appears on ALL virtual desktops.\n")
         out.write("# input_actions: DSL string for keyboard/mouse setup in phase 4.\n")
         out.write("#   Leave blank or fill in by hand. See docs/SNAPSHOT.md.\n")
+        out.write("# priority: launch order group (0=first launched, 99=last; default 50).\n")
+        out.write("#   Entries sharing a priority value are processed as one batch.\n")
         out.write("# =============================================================================\n")
         out.write("\n")
         out.write(f"meta:\n")
@@ -624,6 +635,7 @@ def capture_snapshot(
             command          = command,
             single_instance  = cfg.is_single_instance(rc),
             ignore_window    = cfg.is_ignore_window(rc),
+            priority         = 50,   # default; set by hand in the YAML after capture
             tile             = cfg.get_tile(rc),
             tracking_uuid    = str(_uuid.uuid4()),   # unique per window per snapshot
             caption          = str(w.get("caption") or ""),

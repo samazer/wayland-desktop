@@ -145,6 +145,7 @@ reliable for size management.
 | `command` | string | snapshot | Shell command used to launch the app (derived from `.desktop` Exec= line). Edit this if an app doesn't launch correctly, or if you want to open a specific file or URL. |
 | `single_instance` | bool | snapshot/hand | If `true`, skip launching if a window with this `resource_class` is already open. Useful for apps like Thunderbird that should only have one instance. |
 | `ignore_window` | bool | snapshot/hand | If `true`, launch the app without waiting for a window (e.g. KeePassXC, which opens only to the system tray). No placement is performed. |
+| `priority` | int | **hand only** | Launch order group, 0–99, default 50. Lower values are launched first. All entries sharing the same priority are processed together as one batch; a 2-second settling pause separates consecutive batches. Assign a low value (e.g. `10`) to high-VRAM applications such as Ollama or `plasma-systemmonitor` so they can complete their GPU memory allocations before the default batch starts. A setup file where no entry specifies `priority` runs identically to a single-pass restore. |
 
 ### Session tracking
 

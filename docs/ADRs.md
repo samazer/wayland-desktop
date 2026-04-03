@@ -1224,3 +1224,117 @@ wrapper.  A partially-primed state is not recoverable mid-run.
   never needs to show it again.
 - Installs without PASS tokens are unaffected: `check-ready` falls back to
   `is_available()` when the snapshot contains no `{PASS …}` entries.
+
+---
+
+## ADR-260402-01 — Priority-based app launch ordering and `AppRestore` class
+
+**Date:** 2026-04-02
+
+### Context
+
+When all applications are launched simultaneously at the start of a restore
+session, the system can experience significant memory pressure — both in system
+RAM and in GPU VRAM.  Many desktop applications allocate GPU objects at startup
+(shader programs, texture atlases, framebuffers) that are loaded directly into
+VRAM.  Applications such as Ollama (which loads large model weights into VRAM)
+and `plasma-systemmonitor` (which uses GPU-accelerated rendering) have large
+VRAM footprints.  When they compete for VRAM alongside every other application
+at the same moment, allocation requests from lower-priority applications can
+fail.  On Linux, a failed VRAM allocation does not always produce a clean error
+— the result can be a crash, a rendering glitch, or silent misbehaviour that is
+difficult to diagnose.
+
+One mitigation strategy is to configure applications that do not require GPU
+acceleration (Thunderbird, Chrome/Brave) to use software rendering only, so
+they do not compete for VRAM at all.  A complementary strategy is to allow the
+high-VRAM applications to launch, stabilise, and complete their VRAM
+allocations before the remaining applications start.  Applications that have
+small or zero VRAM requirements will still be allocated some VRAM when they
+need it, but because their allocation requests are smaller and less frequent
+they are less likely to encounter allocation failures.
+
+The restore script had no mechanism to express or enforce this ordering: all
+entries were processed in a single pass in snapshot-file order.
+
+### Decision 1 — `priority` field in `SnapshotEntry`
+
+Add an integer `priority` field (range 0–99, default 50) to `SnapshotEntry`
+in `kwin_lib/snapshot.py`.  Lower values indicate higher priority and are
+launched first.  All entries sharing the same priority value are processed
+together as one batch.  After each batch completes (phases 1–5 inclusive), the
+restore script waits `PRIORITY_BETWEEN_DELAY` seconds (module constant, 2.0 s)
+before starting the next batch.  This gives the high-priority applications time
+to settle their VRAM allocations before the lower-priority batch begins.
+
+A setup file in which no entry specifies `priority` (i.e. all entries default
+to 50) runs identically to the old single-pass restore: one batch, no
+inter-batch delay.  The change is therefore fully backward-compatible.
+
+Typical usage in a setup YAML:
+
+```yaml
+# Priority 10 — launch and settle first (large VRAM consumers)
+- app: ollama
+  priority: 10
+  ...
+- app: systemmonitor
+  priority: 10
+  ...
+
+# Priority 50 — default batch (moderate or zero VRAM)
+- app: thunderbird
+  priority: 50
+  ...
+- app: brave
+  priority: 50
+  ...
+```
+
+### Decision 2 — `AppRestore` class
+
+The five restore phases were previously written as a monolithic inline block
+inside `main()`, sharing state through local variables in the enclosing scope.
+This made individual phases hard to read, test, or extend, and would have
+required passing a long parameter list to any extracted function.
+
+To address this, a new `AppRestore` class is introduced in `kwin_restore.py`.
+Shared context (config, args, progress window, logger, injector, secret
+service, session state) is stored as instance attributes set at construction
+time.  Mutable per-run state (`kwin`, `restore_desktop_id`, `launch_delay_s`)
+is set by `main()` immediately before calling the orchestration methods.
+
+Each phase becomes a method:
+
+| Method | Responsibility |
+|--------|----------------|
+| `phase1(entries)` | Launch / identify; returns `list[RestoreResult]` |
+| `phase2(results)` | Move windows to target desktop and screen |
+| `phase3(results)` | Settle delay then finalise state (maximize / tile / raise) |
+| `phase4(results)` | Input-action injection via XDG RemoteDesktop portal |
+| `phase5(results)` | Re-tile all-desktops windows on every virtual desktop |
+| `_restore_desktop(label)` | Private helper: switch back to the starting desktop |
+
+Two orchestration methods drive the loop:
+
+- `run_priority_group(entries, priority, group_num, total_groups)` — runs
+  phases 1–5 for one priority batch and returns the accumulated results.
+- `run_all_priorities(entries)` — scans all entries for unique priority values,
+  sorts them ascending, and calls `run_priority_group()` once per value,
+  inserting the inter-batch delay between groups.
+
+The existing standalone per-entry functions (`launch_entry`, `move_entry`,
+`finalise_entry`) are retained unchanged; the phase methods call them.
+`main()` retains ownership of setup, teardown, error handling, and the summary.
+
+### Consequences
+
+- Setup files with a single priority value (or no explicit priority) behave
+  identically to the previous restore.
+- High-VRAM applications can be assigned `priority: 10` (or any value below
+  50) so they launch and stabilise before the default batch.
+- The inter-batch delay is a module constant (`PRIORITY_BETWEEN_DELAY = 2.0`).
+  Making it a CLI flag or config option is deferred to a future ADR if needed.
+- `AppRestore` makes the restore logic easier to read, test, and extend: each
+  phase method is self-contained and its dependencies are explicit attributes
+  rather than closure variables.

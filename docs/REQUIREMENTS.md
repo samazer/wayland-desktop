@@ -229,6 +229,13 @@ Two hook scripts are supported, both optional and both located in this folder:
 launches) and `restore-user-after` (run after `kwin_restore.py` returns,
 regardless of success or failure).
 
+**REQ-04.10** — The configuration loader shall not crash when the config file
+contains tab characters.  Before passing the file contents to the YAML parser,
+all tab characters shall be replaced with a single space character.  YAML does
+not permit literal tab characters in its syntax; this pre-processing prevents
+a `yaml.scanner.ScannerError` from aborting a script run due to accidental
+indentation with tabs.
+
 ---
 
 ### REQ-05 Layout snapshot
@@ -330,6 +337,19 @@ argument, it shall suppress both user hook scripts (`restore-user-before` and
 application without triggering heavyweight setup tasks (such as mounting
 network shares or starting VPN services) that the hook scripts typically
 perform.
+
+**REQ-06.15** — Each snapshot entry shall carry an integer `priority` property
+(range 0–99, default 50).  Lower values indicate higher priority and are
+launched first.  The restore script shall group entries by priority value,
+process all entries within each group through all five restore phases before
+starting the next group, and insert a fixed settling pause between consecutive
+groups.  This mechanism allows high-VRAM applications (such as Ollama and
+`plasma-systemmonitor`) to launch, stabilise, and complete their GPU memory
+allocations before less demanding applications begin.  Applications that do not
+require hardware-accelerated rendering may be configured to use software
+rendering and assigned a later priority group.  A setup file in which no entry
+specifies `priority` (all entries default to 50) shall behave identically to a
+single-pass restore, with no inter-group delay applied.
 
 ---
 
@@ -558,6 +578,7 @@ persisted to skip the dialog on subsequent runs.
 | REQ-04.7 Default setup file | ✓ Complete | `default_setup` in config |
 | REQ-04.8 Progress window config | ✓ Complete | `progress_window` in config; `--show-window` / `--no-window` |
 | REQ-04.9 User scripts folder | ✓ Complete | `user_scripts_folder` in config; `restore-user-before` and `restore-user-after` hooks; read by `restore` via `getconfig` |
+| REQ-04.10 Tab-tolerant config loader | ✓ Complete | `KWinConfig.load()` replaces tabs with spaces before YAML parsing |
 | REQ-05 Layout snapshot | ✓ Complete | `snapshot.py`, `snapshot` |
 | REQ-06.1–06.4 Restore core | ✓ Complete | Five-phase restore in `restore` |
 | REQ-06.5 Session state written on restore | ✓ Complete | `session_state.py` |
@@ -569,6 +590,7 @@ persisted to skip the dialog on subsequent runs.
 | REQ-06.12 Progress window | ✓ Complete | `kwin_lib/progress_window.py`; `--show-window` / `--no-window` |
 | REQ-06.13 Log file | ✓ Complete | `--log FILE`; `_TeeWriter` / `_install_log_tee()` in `restore` |
 | REQ-06.14 Single-app suppresses hooks | ✓ Complete | `restore` bash wrapper; positional arg detection loop |
+| REQ-06.15 Priority-based launch ordering | ✓ Complete | `priority` field in `SnapshotEntry`; `AppRestore.run_all_priorities()` in `kwin_restore.py` |
 | REQ-07 Session tracking | ✓ Complete | `session_state.py`; ADR-260321-01 |
 | REQ-08 Drift correction | ✓ Complete | `realign`; screen map keyed by `id(entry)` to handle duplicate aliases |
 | REQ-09.1–09.3 Tile/snap positioning | ✓ Complete | `WindowManager.tile()`; ADR-260322-04 |
