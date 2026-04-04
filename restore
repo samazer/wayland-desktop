@@ -39,6 +39,11 @@
 # application placement without triggering heavyweight setup tasks — such as
 # mounting network shares or starting VPN services — that the hooks perform
 # during a full restore.
+#
+# The --skip-user-scripts flag (REQ-06.16) is the explicit equivalent: it
+# suppresses both hook scripts and Dialog 1 while still running a full restore.
+# Use it when the hooks have already been run (e.g. on a second restore pass)
+# or when testing the restore itself without side effects from the hooks.
 # =============================================================================
 #
 # do not edit: begin
@@ -72,14 +77,25 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESTORE_PY="$SCRIPT_DIR/wayland/kwin_restore.py"
 
-# -- Bypass dialogs for dry-run -----------------------------------------------
+# -- Build _py_args: all args except --skip-user-scripts ----------------------
+# kwin_restore.py does not know --skip-user-scripts; it is handled here in the
+# wrapper only.  All other args are forwarded to Python unchanged.
+_py_args=()
 for arg in "$@"; do
-    if [[ "$arg" == "--dry-run" ]]; then
-        exec python3 "$RESTORE_PY" "$@"
+    if [[ "$arg" != "--skip-user-scripts" ]]; then
+        _py_args+=("$arg")
     fi
 done
 
-# -- Detect a positional APP argument (REQ-06.14) -----------------------------
+# -- Bypass dialogs for dry-run -----------------------------------------------
+for arg in "${_py_args[@]+"${_py_args[@]}"}"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+        exec python3 "$RESTORE_PY" "${_py_args[@]}"
+    fi
+done
+
+# -- Detect positional APP argument (REQ-06.14) and --skip-user-scripts -------
+# (REQ-06.16) flag — either cause both user hook scripts to be suppressed.
 # Flags that consume the following token as their value — those tokens must
 # not be mistaken for a program name.
 _value_flags="--setup --config --log --timeout --delay --settle-delay --phase5-delay --filter"
@@ -87,6 +103,13 @@ _value_flags="--setup --config --log --timeout --delay --settle-delay --phase5-d
 _skip_user_scripts=false
 _prev_arg=""
 for arg in "$@"; do
+    # --skip-user-scripts is a wrapper-only flag (REQ-06.16).
+    if [[ "$arg" == "--skip-user-scripts" ]]; then
+        _skip_user_scripts=true
+        _prev_arg="$arg"
+        continue
+    fi
+
     # If the previous token was a value-taking flag, this token is its value.
     _is_flag_value=false
     for _vf in $_value_flags; do
@@ -185,15 +208,18 @@ done
 
 # -- Run the Python restore script --------------------------------------------
 # Not exec'd (unlike --dry-run above) so we can run restore-user-after below.
+# _py_args is used (not $@) so the wrapper-only --skip-user-scripts flag is
+# not forwarded to kwin_restore.py, which does not know it.
 _restore_exit=0
-python3 "$RESTORE_PY" "$@" || _restore_exit=$?
+python3 "$RESTORE_PY" "${_py_args[@]+"${_py_args[@]}"}" || _restore_exit=$?
 
 # -- Run restore-user-after if present ----------------------------------------
 # Called regardless of whether kwin_restore.py succeeded or failed.
 # Typical use: post-restore tasks such as opening a terminal, sending a
 # notification, or cleaning up temporary state created by restore-user-before.
 # The original exit code of kwin_restore.py is re-applied after this hook.
-# Suppressed when a single APP argument is supplied (REQ-06.14).
+# Suppressed when a positional APP argument is supplied (REQ-06.14) or when
+# --skip-user-scripts is given (REQ-06.16).
 _user_after="$USER_SCRIPTS_FOLDER/restore-user-after"
 if [[ "$_skip_user_scripts" == false && -x "$_user_after" ]]; then
     "$_user_after"
