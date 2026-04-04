@@ -53,14 +53,27 @@ working with an idiot-savant.  It's strange.
 Anyway, the AI has become a useful tool and it has helped me produce a Desktop Session Setup for Wayland that is better 
 than the original X11 version.
 
-Be aware that the input injection feature is not for the faint of heart.  You really need to test your input injection 
-scripts carefully as there are a few ways that your system may focus the wrong window (delays that need to be longer, 
-failure to re-focus a window that has lost focus for some reason, etc., keep testing until you get it right.) If you 
-are not careful, you can find yourself sending Secret Service tokens to the wrong window, including to browser pages
-that might expose your secrets.  
+### Notes
 
-Also be aware that the feature which handles input injection of Mouse operations is not working at all just now.  The 
-mouse clicks find their way to the wrong parts of the screen/window.  
+1. This project does not have a version number and may never be 
+   completed.  A new version of the Wayland project is likely to
+   be released, with Session Restore functionality,  in the next 
+   year or so (ie: end of 2026 to mid 2027 at the latest.)  Most 
+   likely there will be some parts of this project that might 
+   survive and be turned into new projects down the road.
+
+2. Be aware that the input injection feature is not for the faint of
+   heart.  You really need to test your input injection scripts
+   carefully as there are a few ways that your system may focus the
+   wrong window (delays that need to be longer, failure to re-focus a
+   window that has lost focus for some reason, etc., keep testing
+   until you get it right.) If you are not careful, you can find
+   yourself sending Secret Service tokens to the wrong window,
+   including to browser pages that might expose your secrets
+
+3. Also be aware that the feature which handles input injection of
+   Mouse operations is not working at all just now.  The mouse clicks
+   find their way to the wrong parts of the screen/window.
 
 Aside from that, wayland-desktop allows me to reboot into a Wayland session and get started much faster than was 
 possible on X11.
@@ -70,5 +83,4 @@ Hopefully there will be other people who will benefit from this project.  Let me
 Thanks,<br>
 All the best,<br>
 Sam &lt;sam dot azer at azertech dot net&gt;
-
 
