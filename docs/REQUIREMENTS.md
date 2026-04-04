@@ -351,9 +351,16 @@ rendering and assigned a later priority group.  A setup file in which no entry
 specifies `priority` (all entries default to 50) shall behave identically to a
 single-pass restore, with no inter-group delay applied.
 
----
+**REQ-06.16** — The `restore` wrapper shall accept a `--skip-user-scripts`
+flag that explicitly suppresses both user hook scripts (`restore-user-before`
+and `restore-user-after`) and Dialog 1, while still performing a full restore.
+This is the explicit counterpart to the positional-APP suppression in
+REQ-06.14.  The flag shall be consumed by the bash wrapper and shall not be
+forwarded to `kwin_restore.py`.  Typical use cases: running a second restore
+pass when the hooks have already executed, or testing the restore itself
+without side effects from the hook scripts.
 
-### REQ-07 Session tracking
+---
 
 **REQ-07.1** — Each managed window shall carry a `tracking_uuid` that
 uniquely identifies it within the snapshot file it was restored from.
@@ -591,6 +598,7 @@ persisted to skip the dialog on subsequent runs.
 | REQ-06.13 Log file | ✓ Complete | `--log FILE`; `_TeeWriter` / `_install_log_tee()` in `restore` |
 | REQ-06.14 Single-app suppresses hooks | ✓ Complete | `restore` bash wrapper; positional arg detection loop |
 | REQ-06.15 Priority-based launch ordering | ✓ Complete | `priority` field in `SnapshotEntry`; `AppRestore.run_all_priorities()` in `kwin_restore.py` |
+| REQ-06.16 --skip-user-scripts flag | ✓ Complete | `restore` bash wrapper; `_py_args` strips flag before forwarding to Python |
 | REQ-07 Session tracking | ✓ Complete | `session_state.py`; ADR-260321-01 |
 | REQ-08 Drift correction | ✓ Complete | `realign`; screen map keyed by `id(entry)` to handle duplicate aliases |
 | REQ-09.1–09.3 Tile/snap positioning | ✓ Complete | `WindowManager.tile()`; ADR-260322-04 |
