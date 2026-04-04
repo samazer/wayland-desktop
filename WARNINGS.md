@@ -28,7 +28,9 @@ These notes are provided as a convenience.  This document contains information a
 ## Contents
 
 0. [Copyright &amp; License](#copyright--license)
-1. [Desktop Input Injection &amp; Window Focus](#copyright--license-cl)
+1. [Use existing kwin functionality](#use-existing-kwin-functions)
+2. [Desktop Input Injection &amp; Window Focus](#copyright--license-cl)
+   - [Mitigation Strategies](#mitigation-strategies)
 
 ## Copyright &amp; License
 <!-- do not edit: begin -->
@@ -53,6 +55,21 @@ License](LICENSE.md) along with this program.  If not, see
 
 <!-- do not edit: end -->
 
+## Use existing KWin functions
+
+This project makes sense for some users who follow a complicated
+desktop setup process on reboot.  As strange as it may sound: **Most
+people will find `wayland-desktop` to be a bit much :)**
+
+In System Settings, you will find an AutoStart section where you can
+list all the windows you want to start when the system reboots.  For
+most people, there will be a few programs listed.  For each of those
+programs, Window Rules can be added to position the windows as desired.
+
+For most users, this functionality is enough to get their systems
+ready for normal use.
+
+
 ## Desktop Input Injection &amp; Window Focus
 
 The Input Injection feature, which is used by assigning simple scripts to the `input_actions` properties of the 
@@ -75,4 +92,38 @@ the `input_actions` properties from your setup files.
 
 When the provided features are used properly, making sure to delay input injection when the system might be busy and 
 focus the correct target window before sending keystrokes, the input injection feature should be useful and effective.
+
+### Mitigation Strategies
+
+A good way to avoid disasters related to Input Injection is to make
+sure that the most dangerous input is injected early in the setup
+process, when there are few other windows open.
+
+To facilitate this strategy, each app listed in the setup file can
+use an associated `priority` property.  The `priority` is an integer
+value from 0 through 99.  By default, all the apps are set to priority
+50 by the `snapshot` tool.  Apps with a lower priority number will be
+fully setup first, followed by apps with higher priorities.  To be
+clear: the full setup process will be completed for all the apps with
+a given priority, then all the apps with the next-higher priority, and
+so on.
+
+To protect your system from unintentional input injection into the
+wrong app, you can:
+
+1. make sure that your most complicated setups, such as multi-tab and
+   multi-pane konsole setups, are completed first.  This can be done
+   before any potentially dangerous apps are launched.  This can be
+   done by using, for example, priority 25 for those complicated apps.
+   In practice, these are probably going to be among the only apps
+   that use Input Injection.  `wayland-desktop` will launch them
+   first, inject input into them and then
+
+2. launch the higher priority apps.  Most of those probably have no input
+   injection as part of their setup.
+   
+3. Finally, dangerous apps, apps that might broadcast your secrets to
+   external servers, can be assigned the highest priority, say, for
+   example, 75, so that they will be setup last in the sequence - long
+   after all the input injection is completed.
 
