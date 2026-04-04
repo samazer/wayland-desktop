@@ -135,6 +135,7 @@ restore [OPTIONS] [APP]
 | `--settle-delay SECS` | 3.0 | Seconds between phase 2 (move) and phase 3 (finalise) |
 | `--phase5-delay MS` | 400 | Milliseconds to wait after each desktop switch in phase 5 |
 | `--filter APP` | | Only restore entries matching this alias or `resourceClass` (repeatable) |
+| `--skip-user-scripts` | | Skip both `restore-user-before` and `restore-user-after` hook scripts, and suppress Dialog 1. Useful for a second restore pass or when the hooks have already been run. |
 | `--verbose` | | Print a debug line after every KWin script call |
 | `--show-window` | | Show the progress window regardless of config setting |
 | `--no-window` | | Suppress the progress window regardless of config setting |
@@ -158,6 +159,10 @@ restore [OPTIONS] [APP]
    If found, it is run before the main Desktop Setup begins.  The `getconfig` 
    and `secret-service` tools are available inside `restore-user-before` (though
    the Secret Service password tool must be unlocked before use.)
+
+   Dialog 1 and both hook scripts are suppressed when a positional `APP`
+   argument is given (REQ-06.14) or when `--skip-user-scripts` is passed
+   (REQ-06.16).
 
 3. **Watch out for pop-ups** — Reminds you that portal authorization dialogs
    (for input injection) and Secret Servie approval dialogs (for secure password 
@@ -210,6 +215,9 @@ restore chrome
 
 # Log the full run to a file
 restore --log ~/.config/wayland-desktop/restore.log
+
+# Full restore but skip the user hook scripts (e.g. second pass, or hooks already ran)
+restore --skip-user-scripts
 ```
 
 **Single-instance behaviour:**
